@@ -26,50 +26,42 @@ bool Metal::Scatter(const Ray& incident, const raycastHit_t& raycastHit, color3_
     return glm::dot(scattered.direction, raycastHit.normal) > 0; // updated to correct the return condition
 }
 
-// Schlick's approximation for Fresnel reflectance
-static float Schlick(float cosine, float refractiveIndex) {
-    float r0 = (1.0f - refractiveIndex) / (1.0f + refractiveIndex);
+static float Schlick(float cosine, float refIdx) {
+    float r0 = (1.0f - refIdx) / (1.0f + refIdx);
     r0 = r0 * r0;
-    return r0 + (1.0f - r0) * std::pow((1.0f - cosine), 5.0f);
+    return r0 + (1.0f - r0) * pow(1.0f - cosine, 5.0f);
 }
 
-bool Dielectric::Scatter(const Ray& incident, const raycastHit_t& raycastHit, color3_t& attenuation, Ray& scattered) const {
-    glm::vec3 outNormal;
-    float ni_over_nt;
-    float cosine;
+bool Dielectric::Scatter(const Ray& incident,
+    const raycastHit_t& hit,
+    color3_t& attenuation,
+    Ray& scattered) const
+{
+    attenuation = albedo; 
 
-    // normalize ray direction
-    glm::vec3 rayDirection = glm::normalize(incident.direction);
+    glm::vec3 unitDirection = glm::normalize(incident.direction);
+    glm::vec3 normal = hit.normal;
 
-    // ray hits inside of surface
-    if (glm::dot(incident.direction, raycastHit.normal) < 0) {
-        // ray entering surface
-        outNormal = raycastHit.normal;
-        ni_over_nt = 1.0f / refractiveIndex;
-        cosine = -glm::dot(rayDirection, raycastHit.normal);
+    float refRatio = glm::dot(unitDirection, normal) < 0 ?
+        1.0f / refractiveIndex :
+        refractiveIndex;
+
+    bool frontFace = glm::dot(unitDirection, normal) < 0;
+    if (!frontFace) normal = -normal;
+
+    float cosTheta = glm::min(-glm::dot(unitDirection, normal), 1.0f);
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+
+    bool cannotRefract = refRatio * sinTheta > 1.0f;
+
+    glm::vec3 direction;
+    if (cannotRefract || random::getReal(0.0f, 1.0f) < Schlick(cosTheta, refractiveIndex)) {
+        direction = glm::reflect(unitDirection, normal);
     }
     else {
-        // ray exiting surface
-        outNormal = -raycastHit.normal;
-        ni_over_nt = refractiveIndex;
-        cosine = refractiveIndex * glm::dot(rayDirection, raycastHit.normal);
+        direction = glm::refract(unitDirection, normal, refRatio);
     }
 
-    // attempt refraction
-    glm::vec3 refracted = glm::refract(rayDirection, outNormal, ni_over_nt);
-    float reflectProbability = 1.0f;
-
-    // check if refraction succeeded (non-zero vector)
-    if (glm::length(refracted) > 0.0f) {
-        // refraction possible, use Schlick approximation
-        reflectProbability = Schlick(cosine, refractiveIndex);
-    }
-
-    glm::vec3 reflected = glm::reflect(rayDirection, raycastHit.normal);
-
-    scattered = (random::getReal() < reflectProbability) ? Ray{ raycastHit.point, reflected } : Ray{ raycastHit.point, refracted };
-    // acts as a tint to the transparent materisl (glass)
-    attenuation = albedo;
-    
+    scattered = Ray(hit.point, direction);
     return true;
 }

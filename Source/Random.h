@@ -29,20 +29,17 @@ namespace random {
         return dist(generator());
     }
 
-    template <typename T = float>
-    inline T getReal(T min, T max) {
-        std::uniform_real_distribution<T> dist(min, max);
+    inline float getReal(float min, float max) {
+        std::uniform_real_distribution<float> dist(min, max);
         return dist(generator());
     }
 
-    template <typename T = float>
-    inline T getReal(T max) {
-        return getReal(static_cast<T>(0), static_cast<T>(max));
+    inline float getReal(float max) {
+        return getReal(0.0f, max);
     }
 
-    template <typename T = float>
-    inline T getReal() {
-        static std::uniform_real_distribution<T> dist(static_cast<T>(0), static_cast<T>(1));
+    inline float getReal() {
+        static std::uniform_real_distribution<float> dist(0.0f, 1.0f);
         return dist(generator());
     }
 

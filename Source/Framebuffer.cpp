@@ -1,45 +1,84 @@
 #include "Framebuffer.h"
 #include "Renderer.h"
 #include <iostream>
+#include <algorithm>
 
-Framebuffer::Framebuffer(const Renderer& renderer, int width, int height) {
-	// store framebuffer parameters
-	this->width = width;
-	this->height = height;
-	// pitch is the size of a row in bytes
-	this->pitch = width * sizeof(SDL_Color);
+Framebuffer::Framebuffer(const Renderer& renderer, int width, int height)
+{
+    this->width = width;
+    this->height = height;
+    this->pitch = width * sizeof(SDL_Color);
 
-	// create texture in RGBA (8888) format
-	texture = SDL_CreateTexture(renderer.renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, width, height);
-	if (texture == nullptr)
-	{
-		std::cerr << "Error creating SDL texture: " << SDL_GetError() << std::endl;
-	}
+    texture = SDL_CreateTexture(
+        renderer.renderer,
+        SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_STREAMING,
+        width, height
+    );
 
-	// resize buffer to size of framebuffer (width * height)
-	buffer.resize(width * height);
+    if (!texture)
+    {
+        std::cerr << "Error creating SDL texture: " << SDL_GetError() << std::endl;
+    }
+
+    buffer.resize(width * height);
+
+    accumulation.resize(width * height, glm::vec3(0.0f));
+
+    sampleCount = 0;
 }
 
-Framebuffer::~Framebuffer() {
-	SDL_DestroyTexture(texture);
+Framebuffer::~Framebuffer()
+{
+    SDL_DestroyTexture(texture);
 }
 
-void Framebuffer::Update() {
-	// write pixel colors in the buffer to the texture
-	SDL_UpdateTexture(texture, NULL, buffer.data(), pitch);
+void Framebuffer::ResetAccumulation()
+{
+    std::fill(accumulation.begin(), accumulation.end(), glm::vec3(0.0f));
+    sampleCount = 0;
 }
 
-void Framebuffer::Clear(const SDL_Color& color) {
-	std::fill(buffer.begin(), buffer.end(), color);
+void Framebuffer::WritePixel(int x, int y, const glm::vec3& hdrColor)
+{
+    if (x < 0 || x >= width || y < 0 || y >= height)
+        return;
+
+    int index = y * width + x;
+
+    accumulation[index] += hdrColor;
+
+    glm::vec3 avg = accumulation[index] / float(sampleCount);
+
+    avg = glm::clamp(avg, glm::vec3(0.0f), glm::vec3(1.0f));
+
+    avg = glm::pow(avg, glm::vec3(1.0f / 2.2f));
+
+    SDL_Color c;
+    c.r = static_cast<Uint8>(avg.r * 255.0f);
+    c.g = static_cast<Uint8>(avg.g * 255.0f);
+    c.b = static_cast<Uint8>(avg.b * 255.0f);
+    c.a = 255;
+
+    buffer[index] = c;
 }
 
-void Framebuffer::DrawPoint(int x, int y, const SDL_Color& color) {
-	// check for out of bounds
-	if (x < 0 || x >= width || y < 0 || y >= height) {
-		std::cerr << "pixel out of bounds - x: " << x << " y: " << y << ".\n";
-		return;
-	}
-
-	buffer[x + (y * width)] = color;
+void Framebuffer::Update()
+{
+    SDL_UpdateTexture(texture, nullptr, buffer.data(), pitch);
 }
 
+void Framebuffer::Clear(const SDL_Color& color)
+{
+    std::fill(buffer.begin(), buffer.end(), color);
+}
+
+void Framebuffer::DrawPoint(int x, int y, const SDL_Color& color)
+{
+    if (x < 0 || x >= width || y < 0 || y >= height) {
+        std::cerr << "pixel out of bounds - x: " << x << " y: " << y << ".\n";
+        return;
+    }
+
+    buffer[x + y * width] = color;
+}

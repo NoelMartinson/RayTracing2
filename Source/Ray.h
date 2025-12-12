@@ -1,6 +1,7 @@
 #pragma once
 #include "Color.h"
 
+
 #include <memory>
 #include <glm/vec3.hpp>
 
@@ -18,7 +19,6 @@ struct Ray
 
     glm::vec3 at(float t) const { return origin + t * direction; }
 
-    // If you want to keep operator*
     glm::vec3 operator*(float t) const { return at(t); }
 };
 

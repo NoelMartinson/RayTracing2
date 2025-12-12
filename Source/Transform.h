@@ -20,7 +20,6 @@ struct Transform {
 	glm::vec3 forward() const { return rotation * glm::vec3{ 0, 0, -1 }; }
 
 	glm::mat4 getMatrix() const {
-		// create 4x4 transform matrix
 		glm::mat4 transform = glm::mat4(1.0f);
 		transform = glm::translate(transform, position);
 		transform = transform * glm::mat4_cast(rotation);
