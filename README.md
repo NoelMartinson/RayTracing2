@@ -139,6 +139,9 @@ Fully rendered cartoon cow with shadow and lighting
 <img width="505" height="440" alt="image" src="https://github.com/user-attachments/assets/e6255d36-410d-44dc-8dad-195eb731eb19" />
 Shadow casting, emmissive and normal mapping.
 
+<img width="809" height="634" alt="Screenshot 2025-12-12 142905" src="https://github.com/user-attachments/assets/15faefff-8610-46d2-aa7c-532080544eac" />
+Finalized rendered scene with opaque, metallic, glass, and emissive materials
+
 ---
 Attribution
 
